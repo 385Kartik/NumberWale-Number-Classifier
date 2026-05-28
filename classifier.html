@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NumberWale — VIP Number Classifier</title>
+    <meta name="description" content="Classify VIP mobile numbers into categories like Mirror, Semi-mirror, Tetra, Penta, ABC ABC, and more.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-primary: #08080f;
+            --bg-card: rgba(255,255,255,0.04);
+            --bg-card-hover: rgba(255,255,255,0.07);
+            --border: rgba(255,255,255,0.08);
+            --border-focus: rgba(120,100,255,0.5);
+            --text-primary: #eaeaef;
+            --text-secondary: #8888a0;
+            --text-muted: #555570;
+            --accent: #7c6aff;
+            --accent-glow: rgba(124,106,255,0.35);
+            --success: #34d399;
+            --warning: #fbbf24;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Background glow */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -40%; left: -20%;
+            width: 80vw; height: 80vw;
+            background: radial-gradient(circle, rgba(124,106,255,0.08) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        body::after {
+            content: '';
+            position: fixed;
+            bottom: -30%; right: -20%;
+            width: 70vw; height: 70vw;
+            background: radial-gradient(circle, rgba(56,200,160,0.06) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+        .header h1 {
+            font-size: 2.2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #7c6aff 0%, #38c8a0 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.02em;
+        }
+        .header p {
+            color: var(--text-secondary);
+            margin-top: 0.5rem;
+            font-size: 0.95rem;
+        }
+
+        /* Grid layout */
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            align-items: start;
+        }
+        @media (max-width: 768px) {
+            .grid { grid-template-columns: 1fr; }
+        }
+
+        /* Panels */
+        .panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.25rem;
+            backdrop-filter: blur(12px);
+            transition: border-color 0.3s;
+        }
+        .panel:hover { border-color: rgba(255,255,255,0.12); }
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.75rem;
+        }
+        .panel-title {
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-secondary);
+        }
+        .badge {
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 0.2rem 0.6rem;
+            border-radius: 20px;
+            background: rgba(124,106,255,0.15);
+            color: var(--accent);
+        }
+
+        textarea {
+            width: 100%;
+            height: 420px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+            font-size: 0.82rem;
+            line-height: 1.7;
+            padding: 1rem;
+            resize: vertical;
+            outline: none;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        textarea:focus {
+            border-color: var(--border-focus);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+        textarea::placeholder { color: var(--text-muted); }
+        textarea::-webkit-scrollbar { width: 6px; }
+        textarea::-webkit-scrollbar-track { background: transparent; }
+        textarea::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+
+        /* Action bar */
+        .actions {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            margin: 1.5rem 0;
+            flex-wrap: wrap;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 2rem;
+            border: none;
+            border-radius: 12px;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.25s;
+            outline: none;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #7c6aff, #5a4ad4);
+            color: #fff;
+            box-shadow: 0 4px 24px var(--accent-glow);
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 32px var(--accent-glow);
+        }
+        .btn-primary:active { transform: translateY(0); }
+        .btn-secondary {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+        .btn-secondary:hover {
+            background: var(--bg-card-hover);
+            border-color: rgba(255,255,255,0.15);
+        }
+        .btn-success {
+            background: rgba(52,211,153,0.15);
+            color: var(--success);
+            border: 1px solid rgba(52,211,153,0.25);
+        }
+
+        /* Toggle */
+        .toggle-group {
+            display: flex;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            overflow: hidden;
+            font-size: 0.78rem;
+        }
+        .toggle-btn {
+            padding: 0.45rem 0.9rem;
+            background: transparent;
+            color: var(--text-secondary);
+            border: none;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .toggle-btn.active {
+            background: rgba(124,106,255,0.2);
+            color: var(--accent);
+        }
+
+        /* Stats */
+        .stats {
+            margin-top: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 1.25rem;
+            backdrop-filter: blur(12px);
+        }
+        .stats-title {
+            font-size: 0.78rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-secondary);
+            margin-bottom: 0.75rem;
+        }
+        .stats-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        .stat-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.75rem;
+            padding: 0.3rem 0.7rem;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.06);
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+        .stat-chip .count {
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        /* Legend */
+        .legend {
+            margin-top: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            backdrop-filter: blur(12px);
+            overflow: hidden;
+        }
+        .legend-toggle {
+            width: 100%;
+            padding: 1rem 1.25rem;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.78rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .legend-toggle .arrow {
+            transition: transform 0.3s;
+            font-size: 0.7rem;
+        }
+        .legend-toggle.open .arrow { transform: rotate(180deg); }
+        .legend-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease;
+        }
+        .legend-content.open { max-height: 600px; }
+        .legend-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 0.4rem;
+            padding: 0 1.25rem 1.25rem;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            padding: 0.35rem 0;
+        }
+        .legend-id {
+            min-width: 26px;
+            height: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 700;
+            border-radius: 6px;
+            background: rgba(124,106,255,0.15);
+            color: var(--accent);
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%) translateY(80px);
+            background: rgba(52,211,153,0.15);
+            border: 1px solid rgba(52,211,153,0.3);
+            color: var(--success);
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            backdrop-filter: blur(12px);
+            opacity: 0;
+            transition: all 0.35s;
+            z-index: 100;
+            pointer-events: none;
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* Pulse animation for button */
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 4px 24px var(--accent-glow); }
+            50% { box-shadow: 0 4px 40px rgba(124,106,255,0.5); }
+        }
+        .btn-primary:not(:disabled) { animation: pulse 3s ease-in-out infinite; }
+        .btn-primary:hover { animation: none; }
+    </style>
+    <!-- SheetJS for Excel processing -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔢 NumberWale Classifier</h1>
+            <p>Paste karo numbers, lo category IDs — seedha Excel me paste karo</p>
+        </div>
+
+        <div class="grid">
+            <!-- Input Panel -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-title">📥 Numbers Paste Karo</span>
+                    <span class="badge" id="inputCount">0 numbers</span>
+                </div>
+                <textarea id="input" placeholder="Yahan numbers paste karo, ek line me ek number...&#10;&#10;Example:&#10;9407 15 7777&#10;74 7777 9190&#10;91 9999 7183&#10;75877 75877"></textarea>
+            </div>
+
+            <!-- Output Panel -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="panel-title">📤 Category IDs</span>
+                    <div style="display:flex; align-items:center; gap:0.6rem;">
+                        <div class="toggle-group">
+                            <button class="toggle-btn active" data-mode="ids" onclick="setMode('ids')">IDs Only</button>
+                            <button class="toggle-btn" data-mode="full" onclick="setMode('full')">Full Detail</button>
+                        </div>
+                    </div>
+                </div>
+                <textarea id="output" readonly placeholder="Category IDs yahan dikhenge..."></textarea>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="actions">
+            <button class="btn btn-primary" id="classifyBtn" onclick="runClassify()">⚡ Classify Karo</button>
+            <button class="btn btn-secondary" onclick="copyOutput()">📋 Copy IDs</button>
+            <button class="btn btn-secondary" onclick="clearAll()">🗑️ Clear</button>
+            <button class="btn btn-secondary" onclick="downloadCSV()">⬇️ Download CSV</button>
+            
+            <!-- Excel Upload -->
+            <input type="file" id="excelInput" accept=".xlsx, .xls, .csv" style="display: none;" onchange="processExcel(this)">
+            <button class="btn btn-primary" style="background: linear-gradient(135deg, #10b981, #059669);" onclick="document.getElementById('excelInput').click()">📁 Upload & Process Excel</button>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats" id="statsSection" style="display:none;">
+            <div class="stats-title">📊 Category Breakdown</div>
+            <div class="stats-grid" id="statsGrid"></div>
+        </div>
+
+        <!-- Legend -->
+        <div class="legend">
+            <button class="legend-toggle" onclick="toggleLegend(this)">
+                📋 Category Legend
+                <span class="arrow">▼</span>
+            </button>
+            <div class="legend-content" id="legendContent">
+                <div class="legend-grid" id="legendGrid"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+    // ─── Category names ───
+    const CAT = {
+        1:'Without 248', 2:'Mirror (5+5 Same)', 3:'Semi Mirror (4+4 Same)', 4:'Two Digit Number',
+        5:'Three Digit Number', 6:'Counting Number', 7:'786 Number', 8:'108 Number',
+        9:'Doubling Number', 10:'AB AB XY XY', 11:'AB AB AB', 12:'Start AB AB',
+        13:'Middle AB AB', 14:'Ending AB AB', 15:'ABC ABC ABC', 16:'ABC ABC',
+        17:'AAA BBB', 18:'Triple', 19:'Tetra', 20:'Penta', 21:'Hexa',
+        22:'Septa', 23:'Octa', 24:'Unique'
+    };
+
+    const CAT_EXAMPLES = {
+        1:'9407 15 7777', 2:'75877 75877', 3:'91 16161616', 4:'88888 80880', 5:'90029 92009',
+        6:'96179 12345', 7:'97860 12345', 8:'74 7777 8108', 9:'88 00 88 00 88',
+        10:'9090 1919 25', 11:'85 848484 19', 12:'7070 313005', 13:'313 7070 313',
+        14:'313005 9090', 15:'879 879 879 0', 16:'993 993 6625', 17:'91 999 0 333 5',
+        18:'910 777 8654', 19:'91 7777 6654', 20:'91 77777 654', 21:'91 777777 54',
+        22:'9 7777777 54', 23:'77777777 54', 24:'Any unique'
+    };
+
+    let outputMode = 'ids';
+    let lastResults = [];
+
+    // ─── Build legend ───
+    (function buildLegend() {
+        const grid = document.getElementById('legendGrid');
+        for (const [id, name] of Object.entries(CAT)) {
+            const item = document.createElement('div');
+            item.className = 'legend-item';
+            item.innerHTML = `<span class="legend-id">${id}</span> ${name}`;
+            item.title = CAT_EXAMPLES[id] || '';
+            grid.appendChild(item);
+        }
+    })();
+
+    // ─── Core classify function ───
+    function classify(raw) {
+        const d = raw.replace(/\D/g, '');
+        if (!d || d.length < 3) return 24;
+
+        // 1. 786 override
+        if (d.includes('786')) return 7;
+
+        // 2. 108 override
+        if (d.includes('108')) return 8;
+
+        // 3. Mirror (first 5 = last 5)
+        if (d.length >= 10 && d.slice(0, 5) === d.slice(5, 10)) return 2;
+
+        // 4–8. Max consecutive same digit run
+        let maxRun = 1, cur = 1;
+        for (let i = 1; i < d.length; i++) {
+            cur = d[i] === d[i - 1] ? cur + 1 : 1;
+            if (cur > maxRun) maxRun = cur;
+        }
+        if (maxRun >= 8) return 23;
+        if (maxRun >= 7) return 22;
+        if (maxRun >= 6) return 21;
+        if (maxRun >= 5) return 20;
+        if (maxRun >= 4) return 19;
+
+        // 9. Semi-mirror (ABCD ABCD — any 8-char window where first4 = last4)
+        for (let i = 0; i <= d.length - 8; i++) {
+            if (d.slice(i, i + 4) === d.slice(i + 4, i + 8)) return 3;
+        }
+
+        // 10. ABC ABC ABC (9-char window)
+        for (let i = 0; i <= d.length - 9; i++) {
+            const p = d.slice(i, i + 3);
+            if (p[0] === p[1] && p[1] === p[2]) continue; // skip AAA
+            if (p === d.slice(i + 3, i + 6) && p === d.slice(i + 6, i + 9)) return 15;
+        }
+
+        // 11. AB AB AB (6-char window)
+        for (let i = 0; i <= d.length - 6; i++) {
+            const p = d.slice(i, i + 2);
+            if (p[0] === p[1]) continue; // skip AA
+            if (p === d.slice(i + 2, i + 4) && p === d.slice(i + 4, i + 6)) return 11;
+        }
+
+        // 12. ABC ABC (6-char window)
+        for (let i = 0; i <= d.length - 6; i++) {
+            const p = d.slice(i, i + 3);
+            if (p[0] === p[1] && p[1] === p[2]) continue;
+            if (p === d.slice(i + 3, i + 6)) return 16;
+        }
+
+        // 13. AB AB XY XY (8-char window, AB ≠ XY)
+        for (let i = 0; i <= d.length - 8; i++) {
+            const a = d[i], b = d[i + 1], x = d[i + 4], y = d[i + 5];
+            if (a === b || x === y) continue;
+            if (a === x && b === y) continue; // AB == XY → already semi-mirror
+            if (a === d[i + 2] && b === d[i + 3] && x === d[i + 6] && y === d[i + 7]) return 10;
+        }
+
+        // 14. AAA BBB — two groups of 3+ consecutive same, different digits
+        const tripleDigits = new Set();
+        let j = 0;
+        while (j < d.length) {
+            let k = j;
+            while (k < d.length && d[k] === d[j]) k++;
+            if (k - j >= 3) tripleDigits.add(d[j]);
+            j = k;
+        }
+        if (tripleDigits.size >= 2) return 17;
+
+        // 15. Counting — single-digit asc/desc run ≥ 4
+        let hasCounting = false;
+        let asc = 1, desc = 1;
+        for (let i = 1; i < d.length; i++) {
+            asc = (+d[i] === +d[i - 1] + 1) ? asc + 1 : 1;
+            desc = (+d[i] === +d[i - 1] - 1) ? desc + 1 : 1;
+            if (asc >= 4 || desc >= 4) { hasCounting = true; break; }
+        }
+        // Two-digit counting: 4 consecutive 2-digit nums ±1
+        if (!hasCounting) {
+            for (let s = 0; s <= d.length - 8; s++) {
+                const nums = [];
+                for (let n = 0; n < 4; n++) nums.push(+(d[s + n * 2] + d[s + n * 2 + 1]));
+                let a2 = true, d2 = true;
+                for (let n = 1; n < 4; n++) {
+                    if (nums[n] !== nums[n - 1] + 1) a2 = false;
+                    if (nums[n] !== nums[n - 1] - 1) d2 = false;
+                }
+                if (a2 || d2) { hasCounting = true; break; }
+            }
+        }
+        if (hasCounting) return 6;
+
+        // 16. Triple (3 consecutive same)
+        if (maxRun >= 3) return 18;
+
+        // 17. Two Digit Number (only 2 distinct digits)
+        if (new Set(d).size === 2) return 4;
+
+        // 18. Three Digit Number (only 3 distinct digits)
+        if (new Set(d).size === 3) return 5;
+
+        // 19. Doubling (a digit appears in ≥3 separate pairs)
+        for (let dig = 0; dig <= 9; dig++) {
+            let pairs = 0, idx = 0;
+            const ds = String(dig);
+            while (idx < d.length - 1) {
+                if (d[idx] === ds && d[idx + 1] === ds) { pairs++; idx += 2; }
+                else idx++;
+            }
+            if (pairs >= 3) return 9;
+        }
+
+        // 20. Start AB AB (first 4 digits)
+        if (d.length >= 4 && d[0] !== d[1] && d[0] === d[2] && d[1] === d[3]) return 12;
+
+        // 21. Middle AB AB
+        for (let i = 1; i <= d.length - 5; i++) {
+            if (d[i] === d[i + 1]) continue;
+            if (d[i] === d[i + 2] && d[i + 1] === d[i + 3]) return 13;
+        }
+
+        // 22. Ending AB AB (last 4 digits)
+        if (d.length >= 4) {
+            const L = d.length;
+            if (d[L - 4] !== d[L - 3] && d[L - 4] === d[L - 2] && d[L - 3] === d[L - 1]) return 14;
+        }
+
+        // 23. Without 248 → ID 1, else Unique → ID 24
+        return d.includes('248') ? 24 : 1;
+    }
+
+    // ─── Run classification ───
+    function runClassify() {
+        const input = document.getElementById('input').value.trim();
+        if (!input) return showToast('⚠️ Pehle numbers paste karo!');
+
+        const lines = input.split('\n').filter(l => l.trim());
+        lastResults = lines.map(line => {
+            const clean = line.trim().replace(/\D/g, '');
+            const catId = classify(line.trim());
+            return { raw: line.trim(), clean, catId };
+        });
+
+        renderOutput();
+        renderStats();
+        document.getElementById('inputCount').textContent = `${lastResults.length} numbers`;
+        showToast(`✅ ${lastResults.length} numbers classified!`);
+    }
+
+    // ─── Render output based on mode ───
+    function renderOutput() {
+        const out = document.getElementById('output');
+        if (outputMode === 'ids') {
+            out.value = lastResults.map(r => r.catId).join('\n');
+        } else {
+            out.value = lastResults.map(r => `${r.clean}\t${r.catId}\t${CAT[r.catId] || 'Unknown'}`).join('\n');
+        }
+    }
+
+    // ─── Stats ───
+    function renderStats() {
+        const section = document.getElementById('statsSection');
+        const grid = document.getElementById('statsGrid');
+        if (!lastResults.length) { section.style.display = 'none'; return; }
+
+        const counts = {};
+        lastResults.forEach(r => counts[r.catId] = (counts[r.catId] || 0) + 1);
+
+        const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+        grid.innerHTML = sorted.map(([id, count]) =>
+            `<div class="stat-chip"><span class="count">${count}</span> ${CAT[id] || 'ID ' + id} (${id})</div>`
+        ).join('');
+        section.style.display = 'block';
+    }
+
+    // ─── Mode toggle ───
+    function setMode(mode) {
+        outputMode = mode;
+        document.querySelectorAll('.toggle-btn').forEach(b => {
+            b.classList.toggle('active', b.dataset.mode === mode);
+        });
+        if (lastResults.length) renderOutput();
+    }
+
+    // ─── Copy ───
+    function copyOutput() {
+        const text = document.getElementById('output').value;
+        if (!text) return showToast('⚠️ Pehle classify karo!');
+        navigator.clipboard.writeText(text).then(() => showToast('📋 Copied to clipboard!'));
+    }
+
+    // ─── Clear ───
+    function clearAll() {
+        document.getElementById('input').value = '';
+        document.getElementById('output').value = '';
+        lastResults = [];
+        document.getElementById('statsSection').style.display = 'none';
+        document.getElementById('inputCount').textContent = '0 numbers';
+    }
+
+    // ─── Download CSV ───
+    function downloadCSV() {
+        if (!lastResults.length) return showToast('⚠️ Pehle classify karo!');
+        const header = 'Number,Category ID,Category Name\n';
+        const rows = lastResults.map(r => `${r.clean},${r.catId},"${CAT[r.catId] || 'Unknown'}"`).join('\n');
+        const blob = new Blob([header + rows], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = 'numberwale_categories.csv'; a.click();
+        URL.revokeObjectURL(url);
+        showToast('⬇️ CSV downloaded!');
+    }
+
+    // ─── Legend toggle ───
+    function toggleLegend(btn) {
+        btn.classList.toggle('open');
+        document.getElementById('legendContent').classList.toggle('open');
+    }
+
+    // ─── Toast ───
+    function showToast(msg) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.classList.add('show');
+        setTimeout(() => t.classList.remove('show'), 2200);
+    }
+
+    // ─── Auto-count on input ───
+    document.getElementById('input').addEventListener('input', function () {
+        const count = this.value.trim().split('\n').filter(l => l.trim()).length;
+        document.getElementById('inputCount').textContent = `${count} numbers`;
+    });
+
+    // ─── Keyboard shortcut ───
+    document.addEventListener('keydown', e => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') runClassify();
+    });
+
+    // ─── Excel Processing via SheetJS ───
+    function processExcel(input) {
+        const file = input.files[0];
+        if (!file) return;
+        
+        showToast('⏳ Processing Excel file...');
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                
+                // Get data as array of arrays
+                let json = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+                if (!json || json.length === 0) return showToast('⚠️ Excel file khali hai!');
+                
+                // Find columns
+                let headerRow = json[0];
+                let numColIdx = -1;
+                let idColIdx = -1;
+                
+                for (let i = 0; i < headerRow.length; i++) {
+                    let h = String(headerRow[i] || '').toLowerCase().trim();
+                    if (h === 'vanity number') {
+                        numColIdx = i; // Exact match priority
+                    } else if (numColIdx === -1 && (h.includes('number') || h.includes('mobile'))) {
+                        numColIdx = i; // Fallback
+                    }
+                    if (h === 'category id') {
+                        idColIdx = i;
+                    }
+                }
+                
+                // Absolute fallback for numbers
+                if (numColIdx === -1) numColIdx = 0; 
+                
+                // If "Category ID" column doesn't exist, create it at the end
+                if (idColIdx === -1) {
+                    idColIdx = headerRow.length;
+                    headerRow.push('Category ID');
+                }
+                
+                let processedCount = 0;
+                
+                // Process rows
+                for (let i = 1; i < json.length; i++) {
+                    let row = json[i];
+                    // Ensure row array is long enough to fit the ID column
+                    while (row.length <= idColIdx) row.push('');
+                    
+                    let numStr = String(row[numColIdx] || '');
+                    
+                    // Fix scientific notation from Excel (e.g., 9.8E+09)
+                    if (numStr.includes('E') || numStr.includes('e')) {
+                        numStr = Number(row[numColIdx]).toLocaleString('fullwide', {useGrouping:false});
+                    }
+                    
+                    let cleanNum = numStr.trim().replace(/\D/g, '');
+                    
+                    if (cleanNum && cleanNum.length >= 3) {
+                        const catId = classify(numStr);
+                        row[idColIdx] = catId; // Insert ID directly into Category ID column
+                        processedCount++;
+                    }
+                }
+                
+                // Write back to sheet and download
+                const newWs = XLSX.utils.aoa_to_sheet(json);
+                workbook.Sheets[firstSheetName] = newWs;
+                XLSX.writeFile(workbook, 'NumberWale_Categorized_' + file.name);
+                
+                showToast(`✅ ${processedCount} numbers processed & downloaded!`);
+            } catch (err) {
+                console.error(err);
+                showToast('❌ Excel process karne me error aaya.');
+            }
+            input.value = ''; // Reset file input
+        };
+        reader.readAsArrayBuffer(file);
+    }
+    </script>
+</body>
+</html>
