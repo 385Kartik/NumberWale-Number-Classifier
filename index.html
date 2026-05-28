@@ -1,195 +1,314 @@
 <!DOCTYPE html>
-<html lang="hi">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NumberWale — VIP Number Classifier</title>
-    <meta name="description" content="Classify VIP mobile numbers into categories and format them automatically.">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <title>NumberWale Classifier</title>
+    <meta name="description" content="Automated categorization and formatting engine for vanity numbers.">
+    <!-- Using Outfit for a modern, rounded, and friendly corporate look -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
         *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
         :root {
-            --bg-primary: #08080f;
-            --bg-card: rgba(255,255,255,0.04);
-            --bg-card-hover: rgba(255,255,255,0.07);
-            --border: rgba(255,255,255,0.08);
-            --text-primary: #eaeaef;
-            --text-secondary: #8888a0;
-            --accent: #7c6aff;
-            --accent-glow: rgba(124,106,255,0.35);
-            --success: #34d399;
+            --bg-body: #f0f4f8;
+            --navy: #1e293b;
+            --navy-dark: #0f172a;
+            --orange: #ff8400;
+            --orange-hover: #e67600;
+            --white: #ffffff;
+            --border: #e2e8f0;
+            --text-main: #334155;
+            --text-light: #64748b;
         }
 
         body {
-            font-family: 'Inter', -apple-system, sans-serif;
-            background: var(--bg-primary);
-            color: var(--text-primary);
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-body);
+            /* Subtle dot grid pattern to make the background interesting */
+            background-image: radial-gradient(#cbd5e1 1.5px, transparent 1.5px);
+            background-size: 24px 24px;
+            color: var(--text-main);
             min-height: 100vh;
-            overflow-x: hidden;
-            padding-bottom: 3rem;
+            -webkit-font-smoothing: antialiased;
         }
 
-        body::before {
+        /* Hero Header Section */
+        .hero {
+            background: linear-gradient(135deg, var(--navy-dark) 0%, var(--navy) 50%, #2a3b5c 100%);
+            padding: 4rem 1.5rem 8.5rem 1.5rem; /* Extra bottom padding for overlap */
+            text-align: center;
+            color: var(--white);
+            position: relative;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        .hero::after {
             content: '';
-            position: fixed;
-            top: -40%; left: -20%;
-            width: 80vw; height: 80vw;
-            background: radial-gradient(circle, rgba(124,106,255,0.08) 0%, transparent 70%);
-            pointer-events: none;
-            z-index: 0;
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            height: 6px;
+            background: linear-gradient(90deg, var(--orange), #ffad33);
+        }
+        .hero h1 {
+            font-size: 3rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+        .hero h1 span {
+            color: var(--orange);
+        }
+        .hero p {
+            color: #94a3b8;
+            font-size: 1.15rem;
+            max-width: 600px;
+            margin: 0 auto;
+            font-weight: 400;
         }
 
         .container {
+            max-width: 1100px;
+            margin: -4rem auto 2rem auto; /* Negative margin pulls it up over the hero */
+            padding: 0 1.5rem;
             position: relative;
-            z-index: 1;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 2rem 1.5rem;
+            z-index: 10;
         }
 
-        .header {
-            text-align: center;
-            margin-bottom: 2rem;
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 3rem;
         }
-        .header h1 {
-            font-size: 2.2rem;
-            font-weight: 800;
-            background: linear-gradient(135deg, #7c6aff 0%, #38c8a0 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            letter-spacing: -0.02em;
-        }
-        .header p {
-            color: var(--text-secondary);
-            margin-top: 0.5rem;
-            font-size: 0.95rem;
-        }
-
-        /* Two Column Layout */
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem; }
         @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
 
+        /* Panels */
         .panel {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 1.5rem;
-            backdrop-filter: blur(12px);
+            background: var(--white);
+            border-radius: 20px;
+            padding: 2.5rem;
+            border: 1px solid rgba(0,0,0,0.04);
+            box-shadow: 0 12px 32px rgba(0,0,0,0.04), 0 2px 4px rgba(0,0,0,0.02);
             display: flex;
             flex-direction: column;
+            gap: 1.5rem;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .panel:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 24px 48px rgba(0,0,0,0.06), 0 8px 16px rgba(0,0,0,0.03);
+        }
+        
+        .panel-header {
+            display: flex;
+            align-items: center;
             gap: 1rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 1rem;
+        }
+        .panel-icon {
+            display: flex; align-items: center; justify-content: center;
+            width: 52px; height: 52px;
+            background: #fff7ed;
+            color: var(--orange);
+            border-radius: 50%;
+            font-size: 1.6rem;
+            box-shadow: 0 4px 12px rgba(255, 132, 0, 0.1);
         }
         .panel-title {
-            font-size: 1rem;
-            font-weight: 600;
-            color: #fff;
-            margin-bottom: 0.5rem;
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--navy);
+        }
+        .panel-desc {
+            color: var(--text-light);
+            font-size: 0.95rem;
+            line-height: 1.5;
         }
 
         textarea {
-            width: 100%;
-            height: 120px;
-            background: rgba(0,0,0,0.3);
-            border: 1px solid var(--border);
+            width: 100%; height: 130px;
+            background: #fbfcfd;
+            border: 1.5px solid var(--border);
             border-radius: 12px;
-            padding: 1rem;
-            color: var(--text-primary);
+            padding: 1.2rem;
             font-family: 'JetBrains Mono', monospace;
+            font-size: 0.95rem;
+            color: var(--navy);
+            transition: all 0.2s;
             resize: vertical;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
         }
-        textarea:focus { outline: none; border-color: var(--accent); }
+        textarea:focus {
+            outline: none;
+            border-color: var(--orange);
+            background: var(--white);
+            box-shadow: 0 0 0 4px rgba(255, 132, 0, 0.12), inset 0 2px 4px rgba(0,0,0,0.01);
+        }
 
         .btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-            padding: 0.8rem 1.5rem;
-            border: none;
-            border-radius: 12px;
-            font-family: 'Inter', sans-serif;
-            font-size: 0.95rem;
-            font-weight: 600;
+            display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+            padding: 0.85rem 1.5rem;
+            border: none; border-radius: 10px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.05rem; font-weight: 600;
             cursor: pointer;
-            transition: all 0.25s;
-            color: #fff;
+            transition: all 0.2s ease;
             width: 100%;
         }
-        .btn-primary { background: linear-gradient(135deg, #7c6aff, #5a4ad4); box-shadow: 0 4px 24px var(--accent-glow); }
-        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 32px var(--accent-glow); }
-        .btn-success { background: linear-gradient(135deg, #10b981, #059669); box-shadow: 0 4px 24px rgba(16,185,129,0.3); }
-        .btn-success:hover { transform: translateY(-2px); box-shadow: 0 6px 32px rgba(16,185,129,0.4); }
-        .btn-secondary { background: var(--bg-card); border: 1px solid var(--border); color: var(--text-primary); }
-        .btn-secondary:hover { background: var(--bg-card-hover); }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--orange), #ff6a00);
+            color: var(--white);
+            box-shadow: 0 4px 15px rgba(255, 132, 0, 0.25);
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255, 132, 0, 0.35);
+        }
+        .btn-secondary {
+            background: var(--white);
+            color: var(--navy);
+            border: 2px solid var(--border);
+        }
+        .btn-secondary:hover {
+            border-color: var(--navy);
+            background: #f1f5f9;
+        }
+        .btn-dark {
+            background: var(--navy);
+            color: var(--white);
+            box-shadow: 0 4px 15px rgba(30, 41, 59, 0.25);
+        }
+        .btn-dark:hover {
+            transform: translateY(-2px);
+            background: var(--navy-dark);
+            box-shadow: 0 8px 25px rgba(30, 41, 59, 0.35);
+        }
 
         /* Table */
         .table-container {
-            width: 100%;
-            overflow-x: auto;
-            border-radius: 12px;
-            border: 1px solid var(--border);
-            background: rgba(0,0,0,0.3);
-            margin-top: 2rem;
-            display: none; /* Hidden until data exists */
+            background: var(--white);
+            border-radius: 20px;
+            padding: 2.5rem;
+            border: 1px solid rgba(0,0,0,0.04);
+            box-shadow: 0 12px 32px rgba(0,0,0,0.04);
+            display: none;
+            animation: slideUp 0.4s ease-out forwards;
         }
-        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-        th, td { padding: 0.8rem 1rem; text-align: left; border-bottom: 1px solid var(--border); }
-        th { background: rgba(255,255,255,0.03); color: var(--text-secondary); font-weight: 600; text-transform: uppercase; font-size: 0.75rem; }
-        tr:last-child td { border-bottom: none; }
-        .col-id { font-weight: 700; color: var(--accent); }
-        .col-num { font-family: 'JetBrains Mono', monospace; font-weight: 600; }
-        .highlight { color: #38c8a0; font-size: 0.95rem; }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .table-header {
+            display: flex; align-items: center; gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+        .table-header h2 {
+            font-size: 1.5rem;
+            color: var(--navy);
+            font-weight: 700;
+        }
+        table { width: 100%; border-collapse: separate; border-spacing: 0; }
+        th, td { padding: 1.15rem 1rem; text-align: left; border-bottom: 1px solid var(--border); transition: background 0.2s; }
+        th {
+            background: #f8fafc;
+            color: var(--text-light);
+            font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px;
+        }
+        th:first-child { border-top-left-radius: 8px; border-bottom-left-radius: 8px; }
+        th:last-child { border-top-right-radius: 8px; border-bottom-right-radius: 8px; }
+        tbody tr:hover td { background: #fff7ed; }
+        
+        .col-id { color: var(--orange); font-weight: 800; font-size: 1.15rem; }
+        .col-num { font-family: 'JetBrains Mono', monospace; color: var(--text-light); }
+        .col-styled { font-family: 'JetBrains Mono', monospace; color: var(--navy); font-size: 1.1rem; }
+        .pattern-focus { color: var(--orange); font-weight: 800; }
+
+        .footer {
+            text-align: center; padding: 2rem 0; margin-top: 2rem;
+        }
+        .footer p { color: var(--text-light); font-weight: 500; font-size: 1.05rem; }
+        .footer span { color: var(--orange); font-weight: 800; font-size: 1.2rem; letter-spacing: 0.5px; }
 
         /* Toast */
         .toast {
-            position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(80px);
-            background: rgba(52,211,153,0.15); border: 1px solid rgba(52,211,153,0.3);
-            color: var(--success); padding: 0.75rem 1.5rem; border-radius: 12px;
-            font-size: 0.85rem; font-weight: 600; backdrop-filter: blur(12px);
-            opacity: 0; transition: all 0.35s; z-index: 100; pointer-events: none;
+            position: fixed; bottom: 2rem; right: 2rem;
+            background: var(--navy-dark); 
+            color: var(--white); 
+            padding: 1rem 1.5rem; 
+            border-radius: 10px;
+            font-size: 0.95rem; 
+            font-weight: 500;
+            box-shadow: 0 12px 32px rgba(0,0,0,0.25);
+            opacity: 0; transition: opacity 0.3s, transform 0.3s; 
+            transform: translateY(20px);
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            z-index: 1000;
         }
-        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        .toast.show { opacity: 1; transform: translateY(0); }
+        .toast-icon {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 24px; height: 24px; border-radius: 50%;
+            background: var(--orange); color: white; font-weight: bold;
+        }
+        .toast.success .toast-icon { background: var(--success); }
+        .toast.error .toast-icon { background: #ef4444; }
     </style>
-    <!-- SheetJS for Excel processing -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🔢 NumberWale Classifier</h1>
-            <p>Paste numbers or upload Excel to classify and format automatically.</p>
-        </div>
+    
+    <!-- Hero Banner -->
+    <div class="hero">
+        <h1>NumberWale <span>Classifier</span></h1>
+        <p>Enterprise engine for automatic categorization and formatting of VIP vanity numbers.</p>
+    </div>
 
+    <div class="container">
         <div class="grid">
             <!-- Manual Input Panel -->
             <div class="panel">
-                <h2 class="panel-title">Manual Input</h2>
-                <textarea id="manualInput" placeholder="Paste numbers here (one per line)..."></textarea>
-                <button class="btn btn-primary" onclick="processManual()">⚙️ Compute Text</button>
+                <div class="panel-header">
+                    <div class="panel-icon">⌨️</div>
+                    <h2 class="panel-title">Manual Input</h2>
+                </div>
+                <textarea id="manualInput" placeholder="Enter or paste numbers here...&#10;(One number per line, strictly 10 digits)"></textarea>
+                <button class="btn btn-primary" onclick="processManual()">⚡ Compute Selection</button>
             </div>
 
             <!-- Excel Upload Panel -->
             <div class="panel">
-                <h2 class="panel-title">Excel Processing</h2>
-                <p style="color: var(--text-secondary); font-size: 0.85rem;">
-                    Upload an Excel file containing a <b>Vanity Number</b> column. <br/>
-                    We will classify, add dashes, add asterisks, and output a <b>Styled Number</b> column.
+                <div class="panel-header">
+                    <div class="panel-icon">📊</div>
+                    <h2 class="panel-title">Batch Processing</h2>
+                </div>
+                <p class="panel-desc">
+                    Upload an Excel file containing a <b>Vanity Number</b> column. The system will categorize, format, and automatically append a <b>Styled Number</b> column.
                 </p>
                 <input type="file" id="excelInput" accept=".xlsx, .xls, .csv" style="display: none;" onchange="processExcelUpload(this)">
                 
-                <div style="display: flex; gap: 1rem; margin-top: auto;">
-                    <button class="btn btn-secondary" onclick="document.getElementById('excelInput').click()">📁 Select Excel File</button>
-                    <button class="btn btn-success" id="btnDownload" style="display:none;" onclick="downloadExport()">⬇️ Download</button>
+                <div style="display: flex; flex-direction: column; gap: 1rem; margin-top: auto;">
+                    <div id="fileInfo" class="panel-desc" style="font-size: 0.9rem; text-align: center; font-weight: 500;">No file selected</div>
+                    <div style="display: flex; gap: 1rem;">
+                        <button class="btn btn-secondary" onclick="document.getElementById('excelInput').click()">📁 Select File</button>
+                        <button class="btn btn-dark" id="btnDownload" style="display:none;" onclick="downloadExport()">⬇️ Download Excel</button>
+                    </div>
                 </div>
-                <div id="fileInfo" style="font-size: 0.8rem; color: var(--text-secondary); text-align: center;">No file selected</div>
             </div>
         </div>
 
         <!-- Detailed Results View -->
         <div class="table-container" id="resultsTableContainer">
-            <h2 class="panel-title" style="padding: 1rem 1rem 0;">Detailed View</h2>
+            <div class="table-header">
+                <div class="panel-icon" style="width: 36px; height: 36px; font-size: 1.1rem; background: #f1f5f9; color: var(--navy);">📋</div>
+                <h2>Classification Results</h2>
+            </div>
             <table>
                 <thead>
                     <tr>
@@ -204,9 +323,16 @@
                 </tbody>
             </table>
         </div>
+        
+        <div class="footer">
+            <p>Designed & Developed by <span>Kartik</span> ✨</p>
+        </div>
     </div>
 
-    <div class="toast" id="toast"></div>
+    <div class="toast" id="toast">
+        <span class="toast-icon" id="toastIcon">!</span>
+        <span id="toastMsg">Message</span>
+    </div>
 
     <script>
     const CAT = {
@@ -223,12 +349,16 @@
     let excelJson = [];
     let originalExcelFile = '';
 
-    // ─── Helpers ───
-    function showToast(msg) {
+    function showToast(msg, type = 'success') {
         const t = document.getElementById('toast');
-        t.textContent = msg;
-        t.classList.add('show');
-        setTimeout(() => t.classList.remove('show'), 2500);
+        const icon = document.getElementById('toastIcon');
+        const msgEl = document.getElementById('toastMsg');
+        
+        msgEl.textContent = msg;
+        t.className = `toast show ${type}`;
+        icon.textContent = type === 'success' ? '✓' : '×';
+        
+        setTimeout(() => t.className = 'toast', 3000);
     }
 
     function findOccurrences(str, pattern) {
@@ -241,7 +371,6 @@
         return matches;
     }
 
-    // ─── Core Classifier Engine ───
     function classifyEngine(raw) {
         const d = String(raw).replace(/\D/g, '');
         if (!d || d.length < 2) return { catId: 24, matches: [] };
@@ -365,16 +494,37 @@
             let j2 = d.indexOf(hundreds[i+1]);
             if (j1 !== -1 && j2 !== -1) return { catId: 6, matches: [[j1, j1+3], [j2, j2+3]] };
         }
-        for (let i = 0; i <= d.length - 2; i++) {
-            let a = +d[i], b = +d[i+1];
-            if (a + 1 === b || a - 1 === b) return { catId: 6, matches: [[i, i+2]] };
+        
+        let maxAsc = 1, curAsc = 1, bestAscStart = 0, curAscStart = 0;
+        let maxDesc = 1, curDesc = 1, bestDescStart = 0, curDescStart = 0;
+        
+        for (let i = 1; i < d.length; i++) {
+            if (+d[i] === +d[i-1] + 1) {
+                curAsc++;
+                if (curAsc > maxAsc) { maxAsc = curAsc; bestAscStart = curAscStart; }
+            } else {
+                curAsc = 1;
+                curAscStart = i;
+            }
+            
+            if (+d[i] === +d[i-1] - 1) {
+                curDesc++;
+                if (curDesc > maxDesc) { maxDesc = curDesc; bestDescStart = curDescStart; }
+            } else {
+                curDesc = 1;
+                curDescStart = i;
+            }
+        }
+        
+        if (maxAsc >= 2 || maxDesc >= 2) {
+            if (maxAsc >= maxDesc) return { catId: 6, matches: [[bestAscStart, bestAscStart + maxAsc]] };
+            else return { catId: 6, matches: [[bestDescStart, bestDescStart + maxDesc]] };
         }
 
         if (!/[248]/.test(d)) return { catId: 1, matches: [] };
         return { catId: 24, matches: [] };
     }
 
-    // ─── Formatters ───
     function addSecondaryDashes(subStr) {
         if (subStr.length < 2) return subStr;
         let res = classifyEngine(subStr);
@@ -405,7 +555,6 @@
             if (start > lastEnd) {
                 parts.push(addSecondaryDashes(cleanNum.slice(lastEnd, start)));
             }
-            // Primary chunk wrapped in *
             parts.push('*' + cleanNum.slice(start, end) + '*');
             lastEnd = end;
         }
@@ -417,26 +566,25 @@
         return res.replace(/-+/g, '-').replace(/^-|-$/g, '');
     }
 
-    // ─── UI Rendering ───
     function renderTable(dataArray) {
         let html = '';
         dataArray.forEach(item => {
+            let styledHtml = item.styled.replace(/\*([^*]+)\*/g, '<span class="pattern-focus">*$1*</span>');
             html += `
             <tr>
                 <td class="col-num">${item.raw}</td>
                 <td class="col-id">${item.catId}</td>
                 <td>${item.catName}</td>
-                <td class="col-num highlight">${item.styled}</td>
+                <td class="col-styled">${styledHtml}</td>
             </tr>`;
         });
         document.getElementById('tableBody').innerHTML = html;
         document.getElementById('resultsTableContainer').style.display = 'block';
     }
 
-    // ─── Manual Processing ───
     function processManual() {
         const text = document.getElementById('manualInput').value;
-        if (!text.trim()) return showToast('⚠️ Enter some numbers first!');
+        if (!text.trim()) return showToast('Please enter some numbers first.', 'error');
         
         const lines = text.split('\n');
         let results = [];
@@ -444,7 +592,7 @@
         lines.forEach(line => {
             let numStr = line.trim();
             let cleanNum = numStr.replace(/\D/g, '');
-            if (cleanNum && cleanNum.length >= 3) {
+            if (cleanNum && cleanNum.length === 10) {
                 const res = classifyEngine(numStr);
                 const styled = applyBoth(cleanNum, res.matches);
                 results.push({
@@ -457,17 +605,16 @@
         });
         
         renderTable(results);
-        showToast(`✅ Processed ${results.length} numbers!`);
+        showToast(`Computed ${results.length} records.`, 'success');
     }
 
-    // ─── Excel Engine ───
     function processExcelUpload(input) {
         const file = input.files[0];
         if (!file) return;
         
         originalExcelFile = file.name;
-        document.getElementById('fileInfo').textContent = `Loaded: ${file.name}`;
-        showToast('⏳ Analyzing Excel file and Computing Details...');
+        document.getElementById('fileInfo').innerHTML = `Selected File:<br><b style="color:var(--navy)">${file.name}</b>`;
+        showToast('Analyzing Excel file...', 'success');
         const reader = new FileReader();
         
         reader.onload = function(e) {
@@ -478,7 +625,7 @@
                 const worksheet = excelWorkbook.Sheets[excelSheetName];
                 
                 excelJson = XLSX.utils.sheet_to_json(worksheet, {header: 1});
-                if (!excelJson || excelJson.length === 0) return showToast('⚠️ Excel is empty!');
+                if (!excelJson || excelJson.length === 0) return showToast('The uploaded Excel is empty.', 'error');
                 
                 let headers = excelJson[0];
                 let numColIdx = -1, idColIdx = -1, nameColIdx = -1, styledColIdx = -1;
@@ -497,7 +644,6 @@
                 
                 if (idColIdx === -1) { idColIdx = headers.length; headers.push('Category ID'); }
                 if (nameColIdx === -1) { nameColIdx = headers.length; headers.push('Category Name'); }
-                // Create or find exactly "Styled Number"
                 if (styledColIdx === -1) { styledColIdx = headers.length; headers.push('Styled Number'); }
                 
                 let tableData = [];
@@ -513,7 +659,7 @@
                     
                     let cleanNum = numStr.trim().replace(/\D/g, '');
                     
-                    if (cleanNum && cleanNum.length >= 3) {
+                    if (cleanNum && cleanNum.length === 10) {
                         const res = classifyEngine(numStr);
                         const catName = CAT[res.catId] || 'Unknown';
                         const styled = applyBoth(cleanNum, res.matches);
@@ -533,25 +679,25 @@
                 
                 renderTable(tableData);
                 document.getElementById('btnDownload').style.display = 'inline-flex';
-                showToast(`✅ Successfully processed ${tableData.length} rows!`);
-                downloadExport(); // Auto-download as requested
+                showToast(`Successfully processed ${tableData.length} records.`, 'success');
+                downloadExport(); 
                 
             } catch (err) {
                 console.error(err);
-                showToast('❌ Error processing Excel file.');
+                showToast('Error processing the file.', 'error');
             }
-            input.value = ''; // Reset
+            input.value = ''; 
         };
         reader.readAsArrayBuffer(file);
     }
 
     function downloadExport() {
-        if (!excelWorkbook || !excelJson.length) return showToast('⚠️ No data to export!');
+        if (!excelWorkbook || !excelJson.length) return showToast('No data available to export.', 'error');
         const newWs = XLSX.utils.aoa_to_sheet(excelJson);
         excelWorkbook.Sheets[excelSheetName] = newWs;
         let newFileName = originalExcelFile ? 'Kartik-operated-' + originalExcelFile : 'NumberWale_Computed.xlsx';
         XLSX.writeFile(excelWorkbook, newFileName);
-        showToast('⬇️ Excel file downloaded!');
+        showToast('Export downloaded successfully.', 'success');
     }
     </script>
 </body>
