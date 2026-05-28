@@ -297,7 +297,32 @@
                     <div id="fileInfo" class="panel-desc" style="font-size: 0.9rem; text-align: center; font-weight: 500;">No file selected</div>
                     <div style="display: flex; gap: 1rem;">
                         <button class="btn btn-secondary" onclick="document.getElementById('excelInput').click()">📁 Select File</button>
-                        <button class="btn btn-dark" id="btnDownload" style="display:none;" onclick="downloadExport()">⬇️ Download Excel</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Export Settings Panel -->
+            <div class="panel" style="grid-column: 1 / -1;">
+                <div class="panel-header">
+                    <div class="panel-icon">⚙️</div>
+                    <h2 class="panel-title">Export Settings & Download</h2>
+                </div>
+                <p class="panel-desc" style="margin-bottom: 1rem;">Values entered below will be applied to all processed numbers when generating the final Excel file.</p>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; align-items: end;">
+                    <div>
+                        <label style="display:block; margin-bottom: 0.5rem; font-size: 0.95rem; font-weight: 600; color: var(--navy);">Ready to Port</label>
+                        <input type="text" id="readyToPortInput" placeholder="e.g. Yes / No" style="width: 100%; padding: 0.85rem 1rem; border: 2px solid var(--border); border-radius: 10px; font-family: 'Outfit'; outline: none;">
+                    </div>
+                    <div>
+                        <label style="display:block; margin-bottom: 0.5rem; font-size: 0.95rem; font-weight: 600; color: var(--navy);">Vendor Discount</label>
+                        <input type="text" id="vendorDiscountInput" placeholder="e.g. 10%" style="width: 100%; padding: 0.85rem 1rem; border: 2px solid var(--border); border-radius: 10px; font-family: 'Outfit'; outline: none;">
+                    </div>
+                    <div>
+                        <label style="display:block; margin-bottom: 0.5rem; font-size: 0.95rem; font-weight: 600; color: var(--navy);">Vendor ID</label>
+                        <input type="text" id="vendorIdInput" placeholder="e.g. V-1234" style="width: 100%; padding: 0.85rem 1rem; border: 2px solid var(--border); border-radius: 10px; font-family: 'Outfit'; outline: none;">
+                    </div>
+                    <div>
+                        <button class="btn btn-primary" onclick="convertToExcel()">⬇️ Convert to Excel</button>
                     </div>
                 </div>
             </div>
@@ -587,24 +612,27 @@
         if (!text.trim()) return showToast('Please enter some numbers first.', 'error');
         
         const lines = text.split('\n');
-        let results = [];
+        window.processedData = [];
         
         lines.forEach(line => {
-            let numStr = line.trim();
+            let parts = line.trim().split(/\s+/);
+            let numStr = parts[0] || '';
+            let rateStr = parts[1] || '';
             let cleanNum = numStr.replace(/\D/g, '');
             if (cleanNum && cleanNum.length === 10) {
                 const res = classifyEngine(numStr);
                 const styled = applyBoth(cleanNum, res.matches);
-                results.push({
-                    raw: numStr,
+                window.processedData.push({
+                    raw: cleanNum, // Keep digits without spaces for standard Excel formatting
                     catId: res.catId,
                     catName: CAT[res.catId] || 'Unknown',
-                    styled: styled
+                    styled: styled,
+                    rate: rateStr
                 });
             }
         });
         
-        renderTable(results);
+        renderTable(window.processedData);
         showToast(`Computed ${results.length} records.`, 'success');
     }
 
@@ -628,59 +656,53 @@
                 if (!excelJson || excelJson.length === 0) return showToast('The uploaded Excel is empty.', 'error');
                 
                 let headers = excelJson[0];
-                let numColIdx = -1, idColIdx = -1, nameColIdx = -1, styledColIdx = -1;
+                let numColIdx = -1, rateColIdx = -1;
                 
                 for (let i = 0; i < headers.length; i++) {
                     let h = String(headers[i] || '').toLowerCase().trim();
                     if (h === 'vanity number') numColIdx = i;
                     else if (numColIdx === -1 && (h.includes('number') || h.includes('mobile'))) numColIdx = i;
                     
-                    if (h === 'category id') idColIdx = i;
-                    if (h === 'category name') nameColIdx = i;
-                    if (h === 'styled number') styledColIdx = i;
+                    if (h === 'vendor rate' || h === 'rate' || h === 'price') rateColIdx = i;
                 }
                 
                 if (numColIdx === -1) numColIdx = 0; 
                 
-                if (idColIdx === -1) { idColIdx = headers.length; headers.push('Category ID'); }
-                if (nameColIdx === -1) { nameColIdx = headers.length; headers.push('Category Name'); }
-                if (styledColIdx === -1) { styledColIdx = headers.length; headers.push('Styled Number'); }
-                
-                let tableData = [];
+                window.processedData = [];
                 
                 for (let i = 1; i < excelJson.length; i++) {
                     let row = excelJson[i];
-                    while (row.length <= Math.max(idColIdx, nameColIdx, styledColIdx)) row.push('');
                     
                     let numStr = String(row[numColIdx] || '');
                     if (numStr.includes('E') || numStr.includes('e')) {
                         numStr = Number(row[numColIdx]).toLocaleString('fullwide', {useGrouping:false});
                     }
                     
+                    numStr = numStr.replace(/\s+/g, ''); // Remove spaces
                     let cleanNum = numStr.trim().replace(/\D/g, '');
+                    
+                    let rateStr = '';
+                    if (rateColIdx !== -1) {
+                        rateStr = String(row[rateColIdx] || '');
+                    }
                     
                     if (cleanNum && cleanNum.length === 10) {
                         const res = classifyEngine(numStr);
                         const catName = CAT[res.catId] || 'Unknown';
                         const styled = applyBoth(cleanNum, res.matches);
                         
-                        row[idColIdx] = res.catId;
-                        row[nameColIdx] = catName;
-                        row[styledColIdx] = styled;
-                        
-                        tableData.push({
-                            raw: numStr,
+                        window.processedData.push({
+                            raw: cleanNum,
                             catId: res.catId,
                             catName: catName,
-                            styled: styled
+                            styled: styled,
+                            rate: rateStr
                         });
                     }
                 }
                 
-                renderTable(tableData);
-                document.getElementById('btnDownload').style.display = 'inline-flex';
-                showToast(`Successfully processed ${tableData.length} records.`, 'success');
-                downloadExport(); 
+                renderTable(window.processedData);
+                showToast(`Successfully processed ${window.processedData.length} records.`, 'success');
                 
             } catch (err) {
                 console.error(err);
@@ -691,12 +713,37 @@
         reader.readAsArrayBuffer(file);
     }
 
-    function downloadExport() {
-        if (!excelWorkbook || !excelJson.length) return showToast('No data available to export.', 'error');
-        const newWs = XLSX.utils.aoa_to_sheet(excelJson);
-        excelWorkbook.Sheets[excelSheetName] = newWs;
-        let newFileName = originalExcelFile ? 'Kartik-operated-' + originalExcelFile : 'NumberWale_Computed.xlsx';
-        XLSX.writeFile(excelWorkbook, newFileName);
+    function convertToExcel() {
+        if (!window.processedData || window.processedData.length === 0) {
+            return showToast('No data available to export.', 'error');
+        }
+        
+        let rtp = document.getElementById('readyToPortInput').value.trim();
+        let vd = document.getElementById('vendorDiscountInput').value.trim();
+        let vid = document.getElementById('vendorIdInput').value.trim();
+        
+        let wsData = [
+            ['Vanity Number', 'Styled Number', 'Category ID', 'Ready to Port', 'Vendor Rate', 'Vendor Discount', 'Vendor ID']
+        ];
+        
+        window.processedData.forEach(item => {
+            wsData.push([
+                item.raw,
+                item.styled,
+                item.catId,
+                rtp,
+                item.rate || '', 
+                vd,
+                vid
+            ]);
+        });
+        
+        let wb = XLSX.utils.book_new();
+        let ws = XLSX.utils.aoa_to_sheet(wsData);
+        XLSX.utils.book_append_sheet(wb, ws, "Classified");
+        
+        let newFileName = originalExcelFile ? 'Kartik-operated-' + originalExcelFile : 'Kartik-operated-numbers.xlsx';
+        XLSX.writeFile(wb, newFileName);
         showToast('Export downloaded successfully.', 'success');
     }
     </script>
