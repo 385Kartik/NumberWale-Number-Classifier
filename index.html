@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NumberWale — VIP Number Classifier</title>
+    <meta name="description" content="Classify VIP mobile numbers into categories and format them automatically.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-primary: #08080f;
+            --bg-card: rgba(255,255,255,0.04);
+            --bg-card-hover: rgba(255,255,255,0.07);
+            --border: rgba(255,255,255,0.08);
+            --text-primary: #eaeaef;
+            --text-secondary: #8888a0;
+            --accent: #7c6aff;
+            --accent-glow: rgba(124,106,255,0.35);
+            --success: #34d399;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+            padding-bottom: 3rem;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: -40%; left: -20%;
+            width: 80vw; height: 80vw;
+            background: radial-gradient(circle, rgba(124,106,255,0.08) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .header h1 {
+            font-size: 2.2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #7c6aff 0%, #38c8a0 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.02em;
+        }
+        .header p {
+            color: var(--text-secondary);
+            margin-top: 0.5rem;
+            font-size: 0.95rem;
+        }
+
+        /* Two Column Layout */
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem; }
+        @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
+
+        .panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            backdrop-filter: blur(12px);
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .panel-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 0.5rem;
+        }
+
+        textarea {
+            width: 100%;
+            height: 120px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1rem;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            resize: vertical;
+        }
+        textarea:focus { outline: none; border-color: var(--accent); }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.8rem 1.5rem;
+            border: none;
+            border-radius: 12px;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.25s;
+            color: #fff;
+            width: 100%;
+        }
+        .btn-primary { background: linear-gradient(135deg, #7c6aff, #5a4ad4); box-shadow: 0 4px 24px var(--accent-glow); }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 32px var(--accent-glow); }
+        .btn-success { background: linear-gradient(135deg, #10b981, #059669); box-shadow: 0 4px 24px rgba(16,185,129,0.3); }
+        .btn-success:hover { transform: translateY(-2px); box-shadow: 0 6px 32px rgba(16,185,129,0.4); }
+        .btn-secondary { background: var(--bg-card); border: 1px solid var(--border); color: var(--text-primary); }
+        .btn-secondary:hover { background: var(--bg-card-hover); }
+
+        /* Table */
+        .table-container {
+            width: 100%;
+            overflow-x: auto;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background: rgba(0,0,0,0.3);
+            margin-top: 2rem;
+            display: none; /* Hidden until data exists */
+        }
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        th, td { padding: 0.8rem 1rem; text-align: left; border-bottom: 1px solid var(--border); }
+        th { background: rgba(255,255,255,0.03); color: var(--text-secondary); font-weight: 600; text-transform: uppercase; font-size: 0.75rem; }
+        tr:last-child td { border-bottom: none; }
+        .col-id { font-weight: 700; color: var(--accent); }
+        .col-num { font-family: 'JetBrains Mono', monospace; font-weight: 600; }
+        .highlight { color: #38c8a0; font-size: 0.95rem; }
+
+        /* Toast */
+        .toast {
+            position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(80px);
+            background: rgba(52,211,153,0.15); border: 1px solid rgba(52,211,153,0.3);
+            color: var(--success); padding: 0.75rem 1.5rem; border-radius: 12px;
+            font-size: 0.85rem; font-weight: 600; backdrop-filter: blur(12px);
+            opacity: 0; transition: all 0.35s; z-index: 100; pointer-events: none;
+        }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    </style>
+    <!-- SheetJS for Excel processing -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔢 NumberWale Classifier</h1>
+            <p>Paste numbers or upload Excel to classify and format automatically.</p>
+        </div>
+
+        <div class="grid">
+            <!-- Manual Input Panel -->
+            <div class="panel">
+                <h2 class="panel-title">Manual Input</h2>
+                <textarea id="manualInput" placeholder="Paste numbers here (one per line)..."></textarea>
+                <button class="btn btn-primary" onclick="processManual()">⚙️ Compute Text</button>
+            </div>
+
+            <!-- Excel Upload Panel -->
+            <div class="panel">
+                <h2 class="panel-title">Excel Processing</h2>
+                <p style="color: var(--text-secondary); font-size: 0.85rem;">
+                    Upload an Excel file containing a <b>Vanity Number</b> column. <br/>
+                    We will classify, add dashes, add asterisks, and output a <b>Styled Number</b> column.
+                </p>
+                <input type="file" id="excelInput" accept=".xlsx, .xls, .csv" style="display: none;" onchange="processExcelUpload(this)">
+                
+                <div style="display: flex; gap: 1rem; margin-top: auto;">
+                    <button class="btn btn-secondary" onclick="document.getElementById('excelInput').click()">📁 Select Excel File</button>
+                    <button class="btn btn-success" id="btnDownload" style="display:none;" onclick="downloadExport()">⬇️ Download</button>
+                </div>
+                <div id="fileInfo" style="font-size: 0.8rem; color: var(--text-secondary); text-align: center;">No file selected</div>
+            </div>
+        </div>
+
+        <!-- Detailed Results View -->
+        <div class="table-container" id="resultsTableContainer">
+            <h2 class="panel-title" style="padding: 1rem 1rem 0;">Detailed View</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Original Number</th>
+                        <th>Category ID</th>
+                        <th>Category Name</th>
+                        <th>Styled Number</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <!-- Rows injected via JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+    const CAT = {
+        1:'Without 248', 2:'Mirror (5+5 Same)', 3:'Semi Mirror (4+4 Same)', 4:'Two Digit Number',
+        5:'Three Digit Number', 6:'Counting Number', 7:'786 Number', 8:'108 Number',
+        9:'Doubling Number', 10:'AB AB XY XY', 11:'AB AB AB', 12:'Start AB AB',
+        13:'Middle AB AB', 14:'Ending AB AB', 15:'ABC ABC ABC', 16:'ABC ABC',
+        17:'AAA BBB', 18:'Triple', 19:'Tetra', 20:'Penta', 21:'Hexa',
+        22:'Septa', 23:'Octa', 24:'Unique'
+    };
+
+    let excelWorkbook = null;
+    let excelSheetName = '';
+    let excelJson = [];
+    let originalExcelFile = '';
+
+    // ─── Helpers ───
+    function showToast(msg) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.classList.add('show');
+        setTimeout(() => t.classList.remove('show'), 2500);
+    }
+
+    function findOccurrences(str, pattern) {
+        let matches = [];
+        let pos = 0;
+        while ((pos = str.indexOf(pattern, pos)) !== -1) {
+            matches.push([pos, pos + pattern.length]);
+            pos += pattern.length;
+        }
+        return matches;
+    }
+
+    // ─── Core Classifier Engine ───
+    function classifyEngine(raw) {
+        const d = String(raw).replace(/\D/g, '');
+        if (!d || d.length < 2) return { catId: 24, matches: [] };
+
+        let i786 = d.indexOf('786');
+        if (i786 !== -1) return { catId: 7, matches: [[i786, i786 + 3]] };
+
+        let i108 = d.indexOf('108');
+        if (i108 !== -1) return { catId: 8, matches: [[i108, i108 + 3]] };
+
+        if (d.length >= 10 && d.slice(0, 5) === d.slice(5, 10)) {
+            return { catId: 2, matches: [[0, 5], [5, 10]] };
+        }
+
+        let maxRun = 1, cur = 1, bestStart = 0;
+        for (let i = 1; i < d.length; i++) {
+            if (d[i] === d[i - 1]) {
+                cur++;
+                if (cur > maxRun) { maxRun = cur; bestStart = i - cur + 1; }
+            } else { cur = 1; }
+        }
+        if (maxRun >= 8) return { catId: 23, matches: [[bestStart, bestStart + maxRun]] };
+        if (maxRun >= 7) return { catId: 22, matches: [[bestStart, bestStart + maxRun]] };
+        if (maxRun >= 6) return { catId: 21, matches: [[bestStart, bestStart + maxRun]] };
+        if (maxRun >= 5) return { catId: 20, matches: [[bestStart, bestStart + maxRun]] };
+        if (maxRun >= 4) return { catId: 19, matches: [[bestStart, bestStart + maxRun]] };
+
+        for (let i = 0; i <= d.length - 8; i++) {
+            for (let j = i + 4; j <= d.length - 4; j++) {
+                if (d.slice(i, i + 4) === d.slice(j, j + 4) && new Set(d.slice(i, i+4)).size > 1) {
+                    return { catId: 3, matches: [[i, i+4], [j, j+4]] };
+                }
+            }
+        }
+
+        let bestAbc = [];
+        let maxAbcCount = 0;
+        for (let i = 0; i <= d.length - 3; i++) {
+            const p = d.slice(i, i + 3);
+            if (p[0] === p[1] && p[1] === p[2]) continue; 
+            const occ = findOccurrences(d, p);
+            if (occ.length > maxAbcCount) { maxAbcCount = occ.length; bestAbc = occ; }
+        }
+        if (maxAbcCount >= 3) return { catId: 15, matches: bestAbc.slice(0,3) };
+
+        for (let i = 0; i <= d.length - 6; i++) {
+            const p = d.slice(i, i + 2);
+            if (p[0] === p[1]) continue;
+            if (p === d.slice(i + 2, i + 4) && p === d.slice(i + 4, i + 6)) {
+                return { catId: 11, matches: [[i, i+2], [i+2, i+4], [i+4, i+6]] };
+            }
+        }
+        if (maxAbcCount >= 2) return { catId: 16, matches: bestAbc.slice(0,2) };
+
+        const ababRegex = /(\d)(\d)\1\2/g;
+        let match_abab;
+        const ababMatches = [];
+        while ((match_abab = ababRegex.exec(d)) !== null) {
+            if (match_abab[1] !== match_abab[2]) {
+                ababMatches.push([match_abab.index, match_abab.index + 4]);
+            }
+        }
+        if (ababMatches.length >= 2) return { catId: 10, matches: ababMatches.slice(0,2) };
+
+        let trips = [];
+        let j = 0;
+        while (j < d.length) {
+            let k = j;
+            while (k < d.length && d[k] === d[j]) k++;
+            if (k - j >= 3) trips.push([j, j+3]);
+            j = k;
+        }
+        let distinctTrips = [];
+        let seenDigits = new Set();
+        for (let t of trips) {
+            let digit = d[t[0]];
+            if (!seenDigits.has(digit)) {
+                seenDigits.add(digit); distinctTrips.push(t);
+            }
+        }
+        if (distinctTrips.length >= 2) return { catId: 17, matches: distinctTrips.slice(0,2) };
+
+        if (maxRun >= 3) return { catId: 18, matches: [[bestStart, bestStart + maxRun]] };
+
+        const uniqueCount = new Set(d).size;
+        if (uniqueCount === 2) return { catId: 4, matches: [] };
+        if (uniqueCount === 3) return { catId: 5, matches: [] };
+
+        let pairs = [];
+        let idx = 0;
+        while (idx < d.length - 1) {
+            if (d[idx] === d[idx+1]) {
+                pairs.push([idx, idx+2]);
+                idx += 2;
+            } else { idx++; }
+        }
+        if (pairs.length >= 2) return { catId: 9, matches: pairs };
+
+        if (d.length >= 4 && d[0] !== d[1] && d[0] === d[2] && d[1] === d[3]) return { catId: 12, matches: [[0, 4]] };
+
+        for (let i = 1; i <= d.length - 5; i++) {
+            if (d[i] === d[i + 1]) continue;
+            if (d[i] === d[i + 2] && d[i + 1] === d[i + 3]) return { catId: 13, matches: [[i, i+4]] };
+        }
+
+        if (d.length >= 4) {
+            const L = d.length;
+            if (d[L - 4] !== d[L - 3] && d[L - 4] === d[L - 2] && d[L - 3] === d[L - 1]) return { catId: 14, matches: [[L-4, L]] };
+        }
+
+        if (pairs.length === 1) return { catId: 9, matches: pairs };
+
+        const tens = ['10','20','30','40','50','60','70','80','90'];
+        const hundreds = ['100','200','300','400','500','600','700','800','900'];
+        for (let i = 0; i < tens.length - 1; i++) {
+            let i1 = d.indexOf(tens[i]);
+            let i2 = d.indexOf(tens[i+1]);
+            if (i1 !== -1 && i2 !== -1) return { catId: 6, matches: [[i1, i1+2], [i2, i2+2]] };
+            
+            let j1 = d.indexOf(hundreds[i]);
+            let j2 = d.indexOf(hundreds[i+1]);
+            if (j1 !== -1 && j2 !== -1) return { catId: 6, matches: [[j1, j1+3], [j2, j2+3]] };
+        }
+        for (let i = 0; i <= d.length - 2; i++) {
+            let a = +d[i], b = +d[i+1];
+            if (a + 1 === b || a - 1 === b) return { catId: 6, matches: [[i, i+2]] };
+        }
+
+        if (!/[248]/.test(d)) return { catId: 1, matches: [] };
+        return { catId: 24, matches: [] };
+    }
+
+    // ─── Formatters ───
+    function addSecondaryDashes(subStr) {
+        if (subStr.length < 2) return subStr;
+        let res = classifyEngine(subStr);
+        if ([1, 4, 5, 24].includes(res.catId) || !res.matches || res.matches.length === 0) return subStr;
+        
+        let parts = [];
+        let lastEnd = 0;
+        let sorted = [...res.matches].sort((a,b) => a[0] - b[0]);
+        
+        for (let [start, end] of sorted) {
+            if (start > lastEnd) parts.push(addSecondaryDashes(subStr.slice(lastEnd, start)));
+            parts.push(subStr.slice(start, end));
+            lastEnd = end;
+        }
+        if (lastEnd < subStr.length) parts.push(addSecondaryDashes(subStr.slice(lastEnd)));
+        
+        return parts.filter(p => p.length > 0).join('-');
+    }
+
+    function applyBoth(cleanNum, primaryMatches) {
+        if (!primaryMatches || primaryMatches.length === 0) return addSecondaryDashes(cleanNum);
+        
+        let parts = [];
+        let lastEnd = 0;
+        let sorted = [...primaryMatches].sort((a,b) => a[0] - b[0]);
+        
+        for (let [start, end] of sorted) {
+            if (start > lastEnd) {
+                parts.push(addSecondaryDashes(cleanNum.slice(lastEnd, start)));
+            }
+            // Primary chunk wrapped in *
+            parts.push('*' + cleanNum.slice(start, end) + '*');
+            lastEnd = end;
+        }
+        if (lastEnd < cleanNum.length) {
+            parts.push(addSecondaryDashes(cleanNum.slice(lastEnd)));
+        }
+        
+        let res = parts.filter(p => p.length > 0).join('-');
+        return res.replace(/-+/g, '-').replace(/^-|-$/g, '');
+    }
+
+    // ─── UI Rendering ───
+    function renderTable(dataArray) {
+        let html = '';
+        dataArray.forEach(item => {
+            html += `
+            <tr>
+                <td class="col-num">${item.raw}</td>
+                <td class="col-id">${item.catId}</td>
+                <td>${item.catName}</td>
+                <td class="col-num highlight">${item.styled}</td>
+            </tr>`;
+        });
+        document.getElementById('tableBody').innerHTML = html;
+        document.getElementById('resultsTableContainer').style.display = 'block';
+    }
+
+    // ─── Manual Processing ───
+    function processManual() {
+        const text = document.getElementById('manualInput').value;
+        if (!text.trim()) return showToast('⚠️ Enter some numbers first!');
+        
+        const lines = text.split('\n');
+        let results = [];
+        
+        lines.forEach(line => {
+            let numStr = line.trim();
+            let cleanNum = numStr.replace(/\D/g, '');
+            if (cleanNum && cleanNum.length >= 3) {
+                const res = classifyEngine(numStr);
+                const styled = applyBoth(cleanNum, res.matches);
+                results.push({
+                    raw: numStr,
+                    catId: res.catId,
+                    catName: CAT[res.catId] || 'Unknown',
+                    styled: styled
+                });
+            }
+        });
+        
+        renderTable(results);
+        showToast(`✅ Processed ${results.length} numbers!`);
+    }
+
+    // ─── Excel Engine ───
+    function processExcelUpload(input) {
+        const file = input.files[0];
+        if (!file) return;
+        
+        originalExcelFile = file.name;
+        document.getElementById('fileInfo').textContent = `Loaded: ${file.name}`;
+        showToast('⏳ Analyzing Excel file and Computing Details...');
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            try {
+                const data = new Uint8Array(e.target.result);
+                excelWorkbook = XLSX.read(data, {type: 'array'});
+                excelSheetName = excelWorkbook.SheetNames[0];
+                const worksheet = excelWorkbook.Sheets[excelSheetName];
+                
+                excelJson = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+                if (!excelJson || excelJson.length === 0) return showToast('⚠️ Excel is empty!');
+                
+                let headers = excelJson[0];
+                let numColIdx = -1, idColIdx = -1, nameColIdx = -1, styledColIdx = -1;
+                
+                for (let i = 0; i < headers.length; i++) {
+                    let h = String(headers[i] || '').toLowerCase().trim();
+                    if (h === 'vanity number') numColIdx = i;
+                    else if (numColIdx === -1 && (h.includes('number') || h.includes('mobile'))) numColIdx = i;
+                    
+                    if (h === 'category id') idColIdx = i;
+                    if (h === 'category name') nameColIdx = i;
+                    if (h === 'styled number') styledColIdx = i;
+                }
+                
+                if (numColIdx === -1) numColIdx = 0; 
+                
+                if (idColIdx === -1) { idColIdx = headers.length; headers.push('Category ID'); }
+                if (nameColIdx === -1) { nameColIdx = headers.length; headers.push('Category Name'); }
+                // Create or find exactly "Styled Number"
+                if (styledColIdx === -1) { styledColIdx = headers.length; headers.push('Styled Number'); }
+                
+                let tableData = [];
+                
+                for (let i = 1; i < excelJson.length; i++) {
+                    let row = excelJson[i];
+                    while (row.length <= Math.max(idColIdx, nameColIdx, styledColIdx)) row.push('');
+                    
+                    let numStr = String(row[numColIdx] || '');
+                    if (numStr.includes('E') || numStr.includes('e')) {
+                        numStr = Number(row[numColIdx]).toLocaleString('fullwide', {useGrouping:false});
+                    }
+                    
+                    let cleanNum = numStr.trim().replace(/\D/g, '');
+                    
+                    if (cleanNum && cleanNum.length >= 3) {
+                        const res = classifyEngine(numStr);
+                        const catName = CAT[res.catId] || 'Unknown';
+                        const styled = applyBoth(cleanNum, res.matches);
+                        
+                        row[idColIdx] = res.catId;
+                        row[nameColIdx] = catName;
+                        row[styledColIdx] = styled;
+                        
+                        tableData.push({
+                            raw: numStr,
+                            catId: res.catId,
+                            catName: catName,
+                            styled: styled
+                        });
+                    }
+                }
+                
+                renderTable(tableData);
+                document.getElementById('btnDownload').style.display = 'inline-flex';
+                showToast(`✅ Successfully processed ${tableData.length} rows!`);
+                downloadExport(); // Auto-download as requested
+                
+            } catch (err) {
+                console.error(err);
+                showToast('❌ Error processing Excel file.');
+            }
+            input.value = ''; // Reset
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    function downloadExport() {
+        if (!excelWorkbook || !excelJson.length) return showToast('⚠️ No data to export!');
+        const newWs = XLSX.utils.aoa_to_sheet(excelJson);
+        excelWorkbook.Sheets[excelSheetName] = newWs;
+        let newFileName = originalExcelFile ? 'Kartik-operated-' + originalExcelFile : 'NumberWale_Computed.xlsx';
+        XLSX.writeFile(excelWorkbook, newFileName);
+        showToast('⬇️ Excel file downloaded!');
+    }
+    </script>
+</body>
+</html>
