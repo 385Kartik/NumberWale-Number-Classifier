@@ -279,7 +279,10 @@
                     <h2 class="panel-title">Manual Input</h2>
                 </div>
                 <textarea id="manualInput" placeholder="Enter or paste numbers here...&#10;(One number per line, strictly 10 digits)"></textarea>
-                <button class="btn btn-primary" onclick="processManual()">⚡ Compute Selection</button>
+                <div style="display: flex; gap: 1rem;">
+                    <button class="btn btn-primary" onclick="processManual(false)">⚡ Compute Selection</button>
+                    <button class="btn btn-secondary" onclick="processManual(true)">⚡ Compute with Space</button>
+                </div>
             </div>
 
             <!-- Excel Upload Panel -->
@@ -295,8 +298,12 @@
                 
                 <div style="display: flex; flex-direction: column; gap: 1rem; margin-top: auto;">
                     <div id="fileInfo" class="panel-desc" style="font-size: 0.9rem; text-align: center; font-weight: 500;">No file selected</div>
-                    <div style="display: flex; gap: 1rem;">
+                    <div style="display: flex; gap: 1rem; align-items: center;">
                         <button class="btn btn-secondary" onclick="document.getElementById('excelInput').click()">📁 Select File</button>
+                        <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.95rem; font-weight: 500; color: var(--navy); cursor: pointer;">
+                            <input type="checkbox" id="excelKeepSpace" style="width: 18px; height: 18px; accent-color: var(--orange);" onchange="processLoadedExcelData()">
+                            Keep Spacing (Dashes)
+                        </label>
                     </div>
                 </div>
             </div>
@@ -506,8 +513,6 @@
             if (d[L - 4] !== d[L - 3] && d[L - 4] === d[L - 2] && d[L - 3] === d[L - 1]) return { catId: 14, matches: [[L-4, L]] };
         }
 
-        if (pairs.length === 1) return { catId: 9, matches: pairs };
-
         const tens = ['10','20','30','40','50','60','70','80','90'];
         const hundreds = ['100','200','300','400','500','600','700','800','900'];
         for (let i = 0; i < tens.length - 1; i++) {
@@ -607,7 +612,37 @@
         document.getElementById('resultsTableContainer').style.display = 'block';
     }
 
-    function processManual() {
+    function applyBothWithCustomSpaces(rawStr, matches) {
+        let dashedStr = rawStr.replace(/\s+/g, '-');
+        if (!matches || matches.length === 0) return dashedStr.replace(/^-|-$/g, '');
+        
+        let sorted = [...matches].sort((a,b) => a[0] - b[0]);
+        let result = '';
+        let digitIdx = 0;
+        
+        for (let i = 0; i < dashedStr.length; i++) {
+            let char = dashedStr[i];
+            let isDigit = /\d/.test(char);
+            
+            if (isDigit) {
+                for (let [start, end] of sorted) {
+                    if (digitIdx === start) result += '*';
+                }
+            }
+            
+            result += char;
+            
+            if (isDigit) {
+                digitIdx++;
+                for (let [start, end] of sorted) {
+                    if (digitIdx === end) result += '*';
+                }
+            }
+        }
+        return result.replace(/-+/g, '-').replace(/^-|-$/g, '');
+    }
+
+    function processManual(withSpace = false) {
         const text = document.getElementById('manualInput').value;
         if (!text.trim()) return showToast('Please enter some numbers first.', 'error');
         
@@ -615,15 +650,41 @@
         window.processedData = [];
         
         lines.forEach(line => {
-            let parts = line.trim().split(/\s+/);
-            let numStr = parts[0] || '';
-            let rateStr = parts[1] || '';
+            let rawLine = line.trim();
+            if (!rawLine) return;
+            
+            let digitCount = 0;
+            let numEndIndex = 0;
+            for (let i = 0; i < rawLine.length; i++) {
+                if (/\d/.test(rawLine[i])) digitCount++;
+                if (digitCount === 10) {
+                    numEndIndex = i + 1;
+                    break;
+                }
+            }
+            
+            let numStr = '';
+            let rateStr = '';
+            if (digitCount >= 10) {
+                numStr = rawLine.substring(0, numEndIndex).trim();
+                rateStr = rawLine.substring(numEndIndex).trim();
+            } else {
+                numStr = rawLine;
+            }
+            
             let cleanNum = numStr.replace(/\D/g, '');
             if (cleanNum && cleanNum.length === 10) {
-                const res = classifyEngine(numStr);
-                const styled = applyBoth(cleanNum, res.matches);
+                const res = classifyEngine(cleanNum);
+                
+                let styled = '';
+                if (withSpace) {
+                    styled = applyBothWithCustomSpaces(numStr, res.matches);
+                } else {
+                    styled = applyBoth(cleanNum, res.matches);
+                }
+                
                 window.processedData.push({
-                    raw: cleanNum, // Keep digits without spaces for standard Excel formatting
+                    raw: cleanNum, 
                     catId: res.catId,
                     catName: CAT[res.catId] || 'Unknown',
                     styled: styled,
@@ -633,7 +694,7 @@
         });
         
         renderTable(window.processedData);
-        showToast(`Computed ${results.length} records.`, 'success');
+        showToast(`Computed ${window.processedData.length} records.`, 'success');
     }
 
     function processExcelUpload(input) {
@@ -652,56 +713,10 @@
                 excelSheetName = excelWorkbook.SheetNames[0];
                 const worksheet = excelWorkbook.Sheets[excelSheetName];
                 
-                excelJson = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+                excelJson = XLSX.utils.sheet_to_json(worksheet, {header: 1, raw: false, defval: ''});
                 if (!excelJson || excelJson.length === 0) return showToast('The uploaded Excel is empty.', 'error');
                 
-                let headers = excelJson[0];
-                let numColIdx = -1, rateColIdx = -1;
-                
-                for (let i = 0; i < headers.length; i++) {
-                    let h = String(headers[i] || '').toLowerCase().trim();
-                    if (h === 'vanity number') numColIdx = i;
-                    else if (numColIdx === -1 && (h.includes('number') || h.includes('mobile'))) numColIdx = i;
-                    
-                    if (h === 'vendor rate' || h === 'rate' || h === 'price') rateColIdx = i;
-                }
-                
-                if (numColIdx === -1) numColIdx = 0; 
-                
-                window.processedData = [];
-                
-                for (let i = 1; i < excelJson.length; i++) {
-                    let row = excelJson[i];
-                    
-                    let numStr = String(row[numColIdx] || '');
-                    if (numStr.includes('E') || numStr.includes('e')) {
-                        numStr = Number(row[numColIdx]).toLocaleString('fullwide', {useGrouping:false});
-                    }
-                    
-                    numStr = numStr.replace(/\s+/g, ''); // Remove spaces
-                    let cleanNum = numStr.trim().replace(/\D/g, '');
-                    
-                    let rateStr = '';
-                    if (rateColIdx !== -1) {
-                        rateStr = String(row[rateColIdx] || '');
-                    }
-                    
-                    if (cleanNum && cleanNum.length === 10) {
-                        const res = classifyEngine(numStr);
-                        const catName = CAT[res.catId] || 'Unknown';
-                        const styled = applyBoth(cleanNum, res.matches);
-                        
-                        window.processedData.push({
-                            raw: cleanNum,
-                            catId: res.catId,
-                            catName: catName,
-                            styled: styled,
-                            rate: rateStr
-                        });
-                    }
-                }
-                
-                renderTable(window.processedData);
+                processLoadedExcelData();
                 showToast(`Successfully processed ${window.processedData.length} records.`, 'success');
                 
             } catch (err) {
@@ -711,6 +726,65 @@
             input.value = ''; 
         };
         reader.readAsArrayBuffer(file);
+    }
+
+    function processLoadedExcelData() {
+        if (!excelJson || excelJson.length === 0) return;
+        
+        let headers = excelJson[0];
+        let numColIdx = -1, rateColIdx = -1;
+        
+        for (let i = 0; i < headers.length; i++) {
+            let h = String(headers[i] || '').toLowerCase().trim();
+            if (h === 'vanity number') numColIdx = i;
+            else if (numColIdx === -1 && (h.includes('number') || h.includes('mobile'))) numColIdx = i;
+            
+            if (h === 'vendor rate' || h === 'rate' || h === 'price') rateColIdx = i;
+        }
+        
+        if (numColIdx === -1) numColIdx = 0; 
+        
+        window.processedData = [];
+        let withSpace = document.getElementById('excelKeepSpace').checked;
+        
+        for (let i = 1; i < excelJson.length; i++) {
+            let row = excelJson[i];
+            
+            let originalCellVal = String(row[numColIdx] || '');
+            if (originalCellVal.includes('E') || originalCellVal.includes('e')) {
+                originalCellVal = Number(row[numColIdx]).toLocaleString('fullwide', {useGrouping:false});
+            }
+            
+            let numStrForSpace = originalCellVal.trim();
+            let cleanNum = numStrForSpace.replace(/\D/g, '');
+            
+            let rateStr = '';
+            if (rateColIdx !== -1) {
+                rateStr = String(row[rateColIdx] || '');
+            }
+            
+            if (cleanNum && cleanNum.length === 10) {
+                const res = classifyEngine(cleanNum);
+                const catName = CAT[res.catId] || 'Unknown';
+                
+                let styled = '';
+                if (withSpace) {
+                    styled = applyBothWithCustomSpaces(numStrForSpace, res.matches);
+                } else {
+                    styled = applyBoth(cleanNum, res.matches);
+                }
+                
+                window.processedData.push({
+                    raw: cleanNum,
+                    catId: res.catId,
+                    catName: catName,
+                    styled: styled,
+                    rate: rateStr
+                });
+            }
+        }
+        
+        renderTable(window.processedData);
     }
 
     function convertToExcel() {
