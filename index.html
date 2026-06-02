@@ -515,14 +515,16 @@
 
         const tens = ['10','20','30','40','50','60','70','80','90'];
         const hundreds = ['100','200','300','400','500','600','700','800','900'];
-        for (let i = 0; i < tens.length - 1; i++) {
+        for (let i = 0; i < tens.length - 2; i++) {
             let i1 = d.indexOf(tens[i]);
             let i2 = d.indexOf(tens[i+1]);
-            if (i1 !== -1 && i2 !== -1) return { catId: 6, matches: [[i1, i1+2], [i2, i2+2]] };
+            let i3 = d.indexOf(tens[i+2]);
+            if (i1 !== -1 && i2 !== -1 && i3 !== -1) return { catId: 6, matches: [[i1, i1+2], [i2, i2+2], [i3, i3+2]] };
             
             let j1 = d.indexOf(hundreds[i]);
             let j2 = d.indexOf(hundreds[i+1]);
-            if (j1 !== -1 && j2 !== -1) return { catId: 6, matches: [[j1, j1+3], [j2, j2+3]] };
+            let j3 = d.indexOf(hundreds[i+2]);
+            if (j1 !== -1 && j2 !== -1 && j3 !== -1) return { catId: 6, matches: [[j1, j1+3], [j2, j2+3], [j3, j3+3]] };
         }
         
         let maxAsc = 1, curAsc = 1, bestAscStart = 0, curAscStart = 0;
@@ -546,7 +548,7 @@
             }
         }
         
-        if (maxAsc >= 2 || maxDesc >= 2) {
+        if (maxAsc >= 3 || maxDesc >= 3) {
             if (maxAsc >= maxDesc) return { catId: 6, matches: [[bestAscStart, bestAscStart + maxAsc]] };
             else return { catId: 6, matches: [[bestDescStart, bestDescStart + maxDesc]] };
         }
