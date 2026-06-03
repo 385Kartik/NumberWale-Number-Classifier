@@ -818,10 +818,14 @@
         let ws = XLSX.utils.aoa_to_sheet(wsData);
         XLSX.utils.book_append_sheet(wb, ws, "Classified");
         
-        let newFileName = originalExcelFile ? 'Kartik-operated-' + originalExcelFile : 'Kartik-operated-numbers.xlsx';
+        let baseName = originalExcelFile || 'numbers.xlsx';
+        if (baseName.toLowerCase().endsWith('.csv')) {
+            baseName = baseName.slice(0, -4) + '.xlsx';
+        }
+        let newFileName = 'Kartik-operated-' + baseName;
         XLSX.writeFile(wb, newFileName);
         showToast('Export downloaded successfully.', 'success');
     }
     </script>
 </body>
-</html>
+</html>=
