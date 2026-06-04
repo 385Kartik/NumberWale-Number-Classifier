@@ -598,7 +598,7 @@
         return parts.filter(p => p.length > 0).join('-');
     }
 
-    function applyBoth(cleanNum, primaryMatches) {
+    function applyBoth(cleanNum, primaryMatches, catId = null) {
         if (!primaryMatches || primaryMatches.length === 0) return addSecondaryDashes(cleanNum);
         
         let parts = [];
@@ -607,13 +607,21 @@
         
         for (let [start, end] of sorted) {
             if (start > lastEnd) {
-                parts.push(addSecondaryDashes(cleanNum.slice(lastEnd, start)));
+                if (catId === 2) {
+                    parts.push(cleanNum.slice(lastEnd, start));
+                } else {
+                    parts.push(addSecondaryDashes(cleanNum.slice(lastEnd, start)));
+                }
             }
             parts.push('*' + cleanNum.slice(start, end) + '*');
             lastEnd = end;
         }
         if (lastEnd < cleanNum.length) {
-            parts.push(addSecondaryDashes(cleanNum.slice(lastEnd)));
+            if (catId === 2) {
+                parts.push(cleanNum.slice(lastEnd));
+            } else {
+                parts.push(addSecondaryDashes(cleanNum.slice(lastEnd)));
+            }
         }
         
         let res = parts.filter(p => p.length > 0).join('-');
@@ -704,7 +712,7 @@
                 if (withSpace) {
                     styled = applyBothWithCustomSpaces(numStr, res.matches);
                 } else {
-                    styled = applyBoth(cleanNum, res.matches);
+                    styled = applyBoth(cleanNum, res.matches, res.catId);
                 }
                 
                 window.processedData.push({
@@ -795,7 +803,7 @@
                 if (withSpace) {
                     styled = applyBothWithCustomSpaces(numStrForSpace, res.matches);
                 } else {
-                    styled = applyBoth(cleanNum, res.matches);
+                    styled = applyBoth(cleanNum, res.matches, res.catId);
                 }
                 
                 window.processedData.push({
