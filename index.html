@@ -475,15 +475,7 @@
             if (k - j >= 3) trips.push([j, j+3]);
             j = k;
         }
-        let distinctTrips = [];
-        let seenDigits = new Set();
-        for (let t of trips) {
-            let digit = d[t[0]];
-            if (!seenDigits.has(digit)) {
-                seenDigits.add(digit); distinctTrips.push(t);
-            }
-        }
-        if (distinctTrips.length >= 2) return { catId: 17, matches: distinctTrips.slice(0,2) };
+        if (trips.length >= 2) return { catId: 17, matches: trips.slice(0,2) };
 
         if (maxRun >= 3) return { catId: 18, matches: [[bestStart, bestStart + maxRun]] };
 
@@ -818,14 +810,10 @@
         let ws = XLSX.utils.aoa_to_sheet(wsData);
         XLSX.utils.book_append_sheet(wb, ws, "Classified");
         
-        let baseName = originalExcelFile || 'numbers.xlsx';
-        if (baseName.toLowerCase().endsWith('.csv')) {
-            baseName = baseName.slice(0, -4) + '.xlsx';
-        }
-        let newFileName = 'Kartik-operated-' + baseName;
+        let newFileName = originalExcelFile ? 'Kartik-operated-' + originalExcelFile : 'Kartik-operated-numbers.xlsx';
         XLSX.writeFile(wb, newFileName);
         showToast('Export downloaded successfully.', 'success');
     }
     </script>
 </body>
-</html>=
+</html>
