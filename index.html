@@ -414,7 +414,7 @@
         if (i108 !== -1) return { catId: 8, matches: [[i108, i108 + 3]] };
 
         if (d.length >= 10 && d.slice(0, 5) === d.slice(5, 10)) {
-            return { catId: 2, matches: [[0, 5], [5, 10]] };
+            return { catId: 2, matches: [[0, 5]] };
         }
 
         let maxRun = 1, cur = 1, bestStart = 0;
@@ -519,6 +519,36 @@
             if (j1 !== -1 && j2 !== -1 && j3 !== -1) return { catId: 6, matches: [[j1, j1+3], [j2, j2+3], [j3, j3+3]] };
         }
         
+        let bestSeqMatches = [];
+        for (let len = 2; len <= 3; len++) {
+            for (let i = 0; i <= d.length - (len * 3); i++) {
+                let seqMatches = [[i, i+len]];
+                let currVal = parseInt(d.slice(i, i+len));
+                let j = i + len;
+                let isAsc = parseInt(d.slice(j, j+len)) === currVal + 1;
+                let isDesc = parseInt(d.slice(j, j+len)) === currVal - 1;
+                
+                if (isAsc || isDesc) {
+                    while (j <= d.length - len) {
+                        let nVal = parseInt(d.slice(j, j+len));
+                        if ((isAsc && nVal === currVal + 1) || (isDesc && nVal === currVal - 1)) {
+                            seqMatches.push([j, j+len]);
+                            currVal = nVal;
+                            j += len;
+                        } else {
+                            break;
+                        }
+                    }
+                    if (seqMatches.length >= 3 && seqMatches.length > bestSeqMatches.length) {
+                        bestSeqMatches = seqMatches;
+                    }
+                }
+            }
+        }
+        if (bestSeqMatches.length >= 3) {
+            return { catId: 6, matches: bestSeqMatches };
+        }
+
         let maxAsc = 1, curAsc = 1, bestAscStart = 0, curAscStart = 0;
         let maxDesc = 1, curDesc = 1, bestDescStart = 0, curDescStart = 0;
         
